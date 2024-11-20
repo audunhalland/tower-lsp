@@ -8,7 +8,7 @@ use futures::io::{AsyncRead, AsyncWrite};
 #[cfg(feature = "runtime-tokio")]
 use tokio::io::{AsyncRead, AsyncWrite};
 #[cfg(feature = "runtime-tokio")]
-use tokio_util::codec::{FramedRead, FramedWrite};
+use tokio_util::codec::FramedRead;
 
 use futures::channel::mpsc;
 use futures::{future, join, stream, FutureExt, Sink, SinkExt, Stream, StreamExt, TryFutureExt};
@@ -16,6 +16,7 @@ use tower::Service;
 use tracing::error;
 
 use crate::codec::{LanguageServerCodec, ParseError};
+use crate::flushingframedwrite::FlushingFramedWrite;
 use crate::jsonrpc::{Error, Id, Message, Request, Response};
 use crate::service::{ClientSocket, RequestStream, ResponseSink};
 
@@ -111,7 +112,8 @@ where
         let (mut server_tasks_tx, server_tasks_rx) = mpsc::channel(MESSAGE_QUEUE_SIZE);
 
         let mut framed_stdin = FramedRead::new(self.stdin, LanguageServerCodec::default());
-        let framed_stdout = FramedWrite::new(self.stdout, LanguageServerCodec::default());
+        // let framed_stdout = FramedWrite::new(self.stdout, LanguageServerCodec::default());
+        let framed_stdout = FlushingFramedWrite::new(self.stdout, LanguageServerCodec::default());
 
         let process_server_tasks = server_tasks_rx
             .buffer_unordered(self.max_concurrency)

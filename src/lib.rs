@@ -103,6 +103,7 @@ use self::jsonrpc::{Error, Result};
 pub mod jsonrpc;
 
 mod codec;
+mod flushingframedwrite;
 mod service;
 mod transport;
 

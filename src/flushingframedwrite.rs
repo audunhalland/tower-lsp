@@ -70,7 +70,7 @@ where
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Result<(), Self::Error>> {
         if !self.as_ref().buf.is_empty() {
-            ready!(self.as_mut().write_and_flush_item::<C::Error>(cx));
+            ready!(self.as_mut().write_and_flush_item::<C::Error>(cx))?;
         }
 
         let proj = self.project();
@@ -95,15 +95,8 @@ where
                     return Poll::Ready(Ok(()));
                 }
                 State::Write => {
-                    let result = ready!(proj.write.as_mut().poll_write(cx, proj.buf));
-                    let written = match result {
-                        Ok(written) => written,
-                        Err(error) => {
-                            return Poll::Ready(Err(error.into()));
-                        }
-                    };
-
-                    proj.buf.split_to(written);
+                    let written = ready!(proj.write.as_mut().poll_write(cx, proj.buf))?;
+                    let _ = proj.buf.split_to(written);
 
                     if proj.buf.is_empty() {
                         *proj.state = State::Flush;
@@ -112,7 +105,7 @@ where
                     };
                 }
                 State::Flush => {
-                    ready!(proj.write.as_mut().poll_flush(cx));
+                    ready!(proj.write.as_mut().poll_flush(cx))?;
                     *proj.state = State::SinkReceive;
 
                     return Poll::Ready(Ok(()));
